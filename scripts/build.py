@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -34,6 +35,28 @@ ROOT = Path(__file__).resolve().parent.parent
 PHOTOS_DIR = ROOT / "photos"
 TEMPLATE_DIR = ROOT / "site_template"
 DIST_DIR = ROOT / "dist"
+
+
+def detect_base_url() -> str:
+    """Bestem URL-prefiks for alle absolutte lenker:
+
+    - Custom domene (CNAME-fil i repo-rota): tomt prefiks (siden serveres fra rot).
+    - GitHub Pages uten custom domene: '/<repo-navn>' (siden serveres i undermappe).
+    - Lokalt (python -m http.server -d dist): tomt prefiks.
+    Kan overstyres med miljøvariabel SITE_BASE_URL.
+    """
+    override = os.environ.get("SITE_BASE_URL")
+    if override is not None:
+        return override.rstrip("/")
+    if (ROOT / "CNAME").exists():
+        return ""
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    if repo and "/" in repo:
+        return "/" + repo.split("/", 1)[1]
+    return ""
+
+
+BASE_URL = detect_base_url()
 
 THUMB_MAX = 1400          # bredeste/høyeste side på grid-thumbnails
 FULL_MAX = 2400           # bredeste/høyeste side på lightbox-bilder
@@ -209,9 +232,9 @@ def write_resized(src: Path, dst: Path, max_dim: int) -> tuple[int, int]:
 
 
 # ---------- HTML-rendering ----------
-def render_layout(title: str, body: str, *, active: str = "/", base_path: str = "") -> str:
+def render_layout(title: str, body: str, *, active: str = "/") -> str:
     nav_items = "".join(
-        f'<a class="{"active" if href == active else ""}" href="{base_path}{href}">{html.escape(label)}</a>'
+        f'<a class="{"active" if href == active else ""}" href="{BASE_URL}{href}">{html.escape(label)}</a>'
         for label, href in SITE["nav"]
     )
     return f"""<!doctype html>
@@ -220,12 +243,12 @@ def render_layout(title: str, body: str, *, active: str = "/", base_path: str = 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)} — {html.escape(SITE["title"])}</title>
-<link rel="stylesheet" href="{base_path}/assets/style.css">
+<link rel="stylesheet" href="{BASE_URL}/assets/style.css">
 <meta name="description" content="{html.escape(SITE["tagline"])}">
 </head>
 <body>
 <header class="site-header">
-  <a class="brand" href="{base_path}/">{html.escape(SITE["title"])}</a>
+  <a class="brand" href="{BASE_URL}/">{html.escape(SITE["title"])}</a>
   <nav class="site-nav">{nav_items}</nav>
 </header>
 <main>
@@ -234,7 +257,7 @@ def render_layout(title: str, body: str, *, active: str = "/", base_path: str = 
 <footer class="site-footer">
   <span>{html.escape(SITE["footer"])}</span>
 </footer>
-<script src="{base_path}/assets/lightbox.js" defer></script>
+<script src="{BASE_URL}/assets/lightbox.js" defer></script>
 </body>
 </html>
 """
@@ -243,9 +266,9 @@ def render_layout(title: str, body: str, *, active: str = "/", base_path: str = 
 def render_index(galleries: list[Gallery]) -> str:
     cards = []
     for g in galleries:
-        cover_thumb = f"/photos/{g.slug}/_thumb_{g.cover.src.stem}.jpg"
+        cover_thumb = f"{BASE_URL}/photos/{g.slug}/_thumb_{g.cover.src.stem}.jpg"
         cards.append(f"""
-<a class="card" href="/{g.slug}/">
+<a class="card" href="{BASE_URL}/{g.slug}/">
   <div class="card-image">
     <img loading="lazy" src="{cover_thumb}" alt="{html.escape(g.title)}">
   </div>
@@ -269,8 +292,8 @@ def render_index(galleries: list[Gallery]) -> str:
 def render_gallery(g: Gallery) -> str:
     items = []
     for i, p in enumerate(g.photos):
-        thumb = f"/photos/{g.slug}/_thumb_{p.src.stem}.jpg"
-        full = f"/photos/{g.slug}/_full_{p.src.stem}.jpg"
+        thumb = f"{BASE_URL}/photos/{g.slug}/_thumb_{p.src.stem}.jpg"
+        full = f"{BASE_URL}/photos/{g.slug}/_full_{p.src.stem}.jpg"
         items.append(
             f'<figure class="photo" data-index="{i}">'
             f'<img loading="lazy" src="{thumb}" data-full="{full}" '
@@ -280,7 +303,7 @@ def render_gallery(g: Gallery) -> str:
 
     body = f"""
 <section class="gallery-header">
-  <a class="back" href="/">← Tilbake</a>
+  <a class="back" href="{BASE_URL}/">← Tilbake</a>
   <h1>{html.escape(g.title)}</h1>
   {f'<p class="year">{html.escape(g.year)}</p>' if g.year else ''}
   {f'<p class="description">{html.escape(g.description)}</p>' if g.description else ''}
@@ -302,9 +325,17 @@ def render_static_page(slug: str, title: str, body_html: str) -> str:
     return render_layout(title, body_html, active=f"/{slug}/")
 
 
+def print_config() -> None:
+    if BASE_URL:
+        print(f"  BASE_URL = '{BASE_URL}'  (siden serveres i undermappe)")
+    else:
+        print("  BASE_URL = ''  (siden serveres fra rot)")
+
+
 # ---------- Hovedflyt ----------
 def build():
     print(f"→ Bygger fra {PHOTOS_DIR}")
+    print_config()
     if DIST_DIR.exists():
         shutil.rmtree(DIST_DIR)
     DIST_DIR.mkdir(parents=True)
@@ -354,9 +385,9 @@ def build():
     # Sitemap (enkel)
     sm = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-          "<url><loc>/</loc></url>"]
+          f"<url><loc>{BASE_URL}/</loc></url>"]
     for g in galleries:
-        sm.append(f"<url><loc>/{g.slug}/</loc></url>")
+        sm.append(f"<url><loc>{BASE_URL}/{g.slug}/</loc></url>")
     sm.append("</urlset>")
     (DIST_DIR / "sitemap.xml").write_text("\n".join(sm), encoding="utf-8")
 
