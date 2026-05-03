@@ -1,0 +1,17 @@
+# Bygget output – genereres på nytt av GitHub Actions
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Lokalt
+.mini.json
+preview.html
