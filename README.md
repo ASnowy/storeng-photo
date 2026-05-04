@@ -72,6 +72,15 @@ Innholdet i `.txt`-filen brukes som bildetekst og overstyrer eventuell EXIF-capt
 Nyttig for analoge bilder som ikke har EXIF, eller når du vil endre teksten
 uten å re-eksportere fra Lightroom.
 
+For å opprette tomme `.txt`-filer for alle bilder som mangler en, kjør:
+
+```bash
+python3 scripts/make_sidecars.py
+```
+
+Scriptet er trygt å kjøre flere ganger – filer med innhold røres ikke.
+Kjør det igjen hver gang du legger til nye bilder.
+
 ### Skjul et galleri midlertidig
 
 Gi mappa et `_`-prefiks: `_draft-winter/` blir hoppet over av build-en.
