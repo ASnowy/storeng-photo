@@ -43,6 +43,35 @@ Hentes automatisk fra `DateTimeOriginal` i EXIF-data:
 
 Overstyring i `_meta.txt`: `year: 2026` eller `years: 2024, 2026`.
 
+### Bildetekster (vises i lightbox når man klikker et bilde)
+
+Kamera, brennvidde, blender og lukkertid hentes automatisk fra EXIF. Kommentarteksten
+kan legges til på to måter – velg den som passer arbeidsflyten:
+
+**Metode 1 – Lightroom Caption (anbefalt for digitale bilder)**
+
+1. Merk bildet i Lightroom.
+2. Gå til **Metadata**-panelet (trykk `D` for Develop, deretter `Library`, eller bruk
+   menyen View → Library).
+3. Finn **Caption**-feltet og skriv inn teksten.
+4. Eksporter som vanlig (`Fil → Eksporter` / `⇧⌘E`). Sørg for at
+   **Metadata → Alle metadata** er valgt i eksportdialogen.
+
+Teksten embeddes i JPEG-filen og leses automatisk ved neste bygg.
+
+**Metode 2 – Sidecar-fil (for analoge bilder eller rask redigering)**
+
+Lag en `.txt`-fil med nøyaktig samme navn som bildet, i samme mappe:
+
+```
+photos/nature/IMG_0474.jpg   ← bildet
+photos/nature/IMG_0474.txt   ← kommentaren
+```
+
+Innholdet i `.txt`-filen brukes som bildetekst og overstyrer eventuell EXIF-caption.
+Nyttig for analoge bilder som ikke har EXIF, eller når du vil endre teksten
+uten å re-eksportere fra Lightroom.
+
 ### Skjul et galleri midlertidig
 
 Gi mappa et `_`-prefiks: `_draft-winter/` blir hoppet over av build-en.

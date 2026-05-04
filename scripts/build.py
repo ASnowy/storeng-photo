@@ -237,6 +237,12 @@ def collect_galleries() -> list[Gallery]:
             p.shutter      = data.get("shutter", "")
             p.comment      = data.get("comment", "")
             p.year         = data.get("year")
+            # Sidecar-fil (.txt med samme navn) overstyrer EXIF-kommentar
+            sidecar = p.src.with_suffix(".txt")
+            if sidecar.exists():
+                text = sidecar.read_text(encoding="utf-8").strip()
+                if text:
+                    p.comment = text
 
         # Årstall: _meta.txt vinner over EXIF
         year_str = ""
