@@ -74,6 +74,7 @@ SITE = {
         ("Om meg", "/about/"),
         ("Contact", "/contact/"),
     ],
+    "goatcounter": "storeng-photo",   # ← bytt ut med din GoatCounter site-kode
 }
 
 
@@ -258,6 +259,7 @@ def render_layout(title: str, body: str, *, active: str = "/") -> str:
   <span>{html.escape(SITE["footer"])}</span>
 </footer>
 <script src="{BASE_URL}/assets/lightbox.js" defer></script>
+{f'<script data-goatcounter="https://{SITE["goatcounter"]}.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>' if SITE.get("goatcounter") else ''}
 </body>
 </html>
 """
