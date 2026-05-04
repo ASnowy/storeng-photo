@@ -3,8 +3,10 @@
   const box = document.getElementById("lightbox");
   if (!box) return;
 
-  const imgEl = box.querySelector("img");
-  const photos = Array.from(document.querySelectorAll(".masonry .photo img"));
+  const imgEl  = box.querySelector("img");
+  const infoEl = box.querySelector(".lightbox-info");
+  const photos  = Array.from(document.querySelectorAll(".masonry .photo img"));
+  const figures = Array.from(document.querySelectorAll(".masonry .photo"));
   if (!photos.length) return;
 
   let index = 0;
@@ -14,6 +16,30 @@
     const src = photos[index].dataset.full || photos[index].src;
     imgEl.src = src;
     imgEl.alt = photos[index].alt || "";
+
+    // EXIF-info – vises kun om data finnes
+    const fig = figures[index];
+    const parts = [
+      fig.dataset.camera,
+      fig.dataset.focal,
+      fig.dataset.aperture,
+      fig.dataset.shutter,
+    ].filter(Boolean);
+
+    const exifLine = parts.join(" · ");
+    const comment  = fig.dataset.comment || "";
+
+    if (exifLine || comment) {
+      let html = "";
+      if (exifLine) html += `<span class="lb-exif">${exifLine}</span>`;
+      if (comment)  html += `<span class="lb-comment">${comment}</span>`;
+      infoEl.innerHTML = html;
+      infoEl.hidden = false;
+    } else {
+      infoEl.innerHTML = "";
+      infoEl.hidden = true;
+    }
+
     box.hidden = false;
     document.body.style.overflow = "hidden";
   }
@@ -21,6 +47,7 @@
   function hide() {
     box.hidden = true;
     imgEl.src = "";
+    infoEl.hidden = true;
     document.body.style.overflow = "";
   }
 
@@ -43,8 +70,8 @@
 
   document.addEventListener("keydown", (e) => {
     if (box.hidden) return;
-    if (e.key === "Escape") hide();
-    if (e.key === "ArrowLeft") show(index - 1);
+    if (e.key === "Escape")     hide();
+    if (e.key === "ArrowLeft")  show(index - 1);
     if (e.key === "ArrowRight") show(index + 1);
   });
 

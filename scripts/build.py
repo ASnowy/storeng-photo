@@ -86,6 +86,11 @@ class Photo:
     width: int = 0
     height: int = 0
     year: int | None = None
+    camera: str = ""
+    focal_length: str = ""
+    aperture: str = ""
+    shutter: str = ""
+    comment: str = ""
 
 
 @dataclass
@@ -107,21 +112,73 @@ def slugify(name: str) -> str:
     return s or "gallery"
 
 
-def read_year(src: Path) -> int | None:
-    """Hent år fra EXIF DateTimeOriginal (eller DateTime). None hvis ikke tilgjengelig."""
+def read_exif(src: Path) -> dict:
+    """Les EXIF: år, kamera, brennvidde, blender, lukkertid og kommentar."""
+    result: dict = {}
     try:
         with Image.open(src) as im:
             exif = im.getexif()
-            # DateTimeOriginal ligger i ExifIFD (0x8769), tag 36867
-            ifd = exif.get_ifd(0x8769)
+            ifd  = exif.get_ifd(0x8769)  # ExifIFD
+
+            # År
             date_str = ifd.get(36867) or ifd.get(36868) or exif.get(306)
             if date_str and len(date_str) >= 4:
-                year = int(date_str[:4])
-                if 1900 <= year <= 2100:
-                    return year
+                try:
+                    y = int(date_str[:4])
+                    if 1900 <= y <= 2100:
+                        result["year"] = y
+                except ValueError:
+                    pass
+
+            def rat(val):
+                try:
+                    if hasattr(val, "numerator"):
+                        d = float(val.denominator)
+                        return float(val.numerator) / d if d else None
+                    if isinstance(val, tuple):
+                        return float(val[0]) / float(val[1]) if val[1] else None
+                    return float(val)
+                except Exception:
+                    return None
+
+            # Kameramodell (tag 272)
+            model = exif.get(272) or ""
+            if isinstance(model, bytes):
+                model = model.decode("utf-8", errors="ignore")
+            model = model.strip()
+            if model:
+                result["camera"] = model
+
+            # Brennvidde (tag 37386)
+            fl = rat(ifd.get(37386))
+            if fl and fl > 0:
+                result["focal_length"] = f"{round(fl)} mm"
+
+            # Blenderåpning / f-tall (tag 33437)
+            fn = rat(ifd.get(33437))
+            if fn and fn > 0:
+                result["aperture"] = f"f/{fn:g}"
+
+            # Lukkertid (tag 33434)
+            et = rat(ifd.get(33434))
+            if et and et > 0:
+                result["shutter"] = f"1/{round(1/et)}s" if et < 1 else f"{et:g}s"
+
+            # Kommentar: ImageDescription (270) → UserComment (37510)
+            desc = exif.get(270) or ""
+            if isinstance(desc, bytes):
+                desc = desc.decode("utf-8", errors="ignore")
+            desc = desc.strip()
+            if not desc:
+                uc = ifd.get(37510) or b""
+                if isinstance(uc, bytes) and len(uc) > 8:
+                    desc = uc[8:].decode("utf-8", errors="ignore").strip("\x00").strip()
+            if desc:
+                result["comment"] = desc
+
     except Exception:
         pass
-    return None
+    return result
 
 
 def format_years(years: list[int]) -> str:
@@ -171,8 +228,17 @@ def collect_galleries() -> list[Gallery]:
         if not photos:
             continue
 
-        # Årstall: 1) hardkodet "year:" eller "years:" i _meta.txt vinner.
-        # 2) Ellers: les EXIF DateTimeOriginal fra hvert bilde og sammenfatt.
+        # Les EXIF for alle bilder (år + visnings-metadata)
+        for p in photos:
+            data = read_exif(p.src)
+            p.camera       = data.get("camera", "")
+            p.focal_length = data.get("focal_length", "")
+            p.aperture     = data.get("aperture", "")
+            p.shutter      = data.get("shutter", "")
+            p.comment      = data.get("comment", "")
+            p.year         = data.get("year")
+
+        # Årstall: _meta.txt vinner over EXIF
         year_str = ""
         if meta.get("year"):
             year_str = meta["year"]
@@ -183,8 +249,6 @@ def collect_galleries() -> list[Gallery]:
             except ValueError:
                 year_str = meta["years"]
         else:
-            for p in photos:
-                p.year = read_year(p.src)
             ys = [p.year for p in photos if p.year]
             year_str = format_years(ys)
 
@@ -296,8 +360,14 @@ def render_gallery(g: Gallery) -> str:
     for i, p in enumerate(g.photos):
         thumb = f"{BASE_URL}/photos/{g.slug}/_thumb_{p.src.stem}.jpg"
         full = f"{BASE_URL}/photos/{g.slug}/_full_{p.src.stem}.jpg"
+        attrs = ""
+        if p.camera:        attrs += f' data-camera="{html.escape(p.camera)}"'
+        if p.focal_length:  attrs += f' data-focal="{html.escape(p.focal_length)}"'
+        if p.aperture:      attrs += f' data-aperture="{html.escape(p.aperture)}"'
+        if p.shutter:       attrs += f' data-shutter="{html.escape(p.shutter)}"'
+        if p.comment:       attrs += f' data-comment="{html.escape(p.comment)}"'
         items.append(
-            f'<figure class="photo" data-index="{i}">'
+            f'<figure class="photo" data-index="{i}"{attrs}>'
             f'<img loading="lazy" src="{thumb}" data-full="{full}" '
             f'width="{p.width}" height="{p.height}" alt="{html.escape(p.src.stem)}">'
             f'</figure>'
@@ -318,6 +388,7 @@ def render_gallery(g: Gallery) -> str:
   <button class="lightbox-prev" aria-label="Forrige">‹</button>
   <button class="lightbox-next" aria-label="Neste">›</button>
   <img alt="">
+  <div class="lightbox-info" hidden></div>
 </div>
 """
     return render_layout(g.title, body, active="/")
