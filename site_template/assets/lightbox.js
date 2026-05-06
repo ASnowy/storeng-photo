@@ -35,6 +35,18 @@
       infoEl.hidden = true;
     }
 
+    // GoatCounter: tell klikk per bilde
+    if (window.goatcounter && window.goatcounter.count) {
+      const fig = figures[index];
+      const gallery = window.location.pathname.replace(/\//g, "").replace(/^$/, "forside");
+      const name    = photos[index].alt || `bilde-${index}`;
+      window.goatcounter.count({
+        path:  `foto/${gallery}/${name}`,
+        title: fig.dataset.comment || name,
+        event: true,
+      });
+    }
+
     box.hidden = false;
     document.body.style.overflow = "hidden";
   }
