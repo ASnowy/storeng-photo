@@ -20,20 +20,15 @@
     // EXIF-info – vises kun om data finnes
     const fig = figures[index];
     const parts = [
-      fig.dataset.camera,
+      fig.dataset.make,
       fig.dataset.focal,
       fig.dataset.aperture,
       fig.dataset.shutter,
     ].filter(Boolean);
 
     const exifLine = parts.join(" · ");
-    const comment  = fig.dataset.comment || "";
-
-    if (exifLine || comment) {
-      let html = "";
-      if (exifLine) html += `<span class="lb-exif">${exifLine}</span>`;
-      if (comment)  html += `<span class="lb-comment">${comment}</span>`;
-      infoEl.innerHTML = html;
+    if (exifLine) {
+      infoEl.innerHTML = `<span class="lb-exif">${exifLine}</span>`;
       infoEl.hidden = false;
     } else {
       infoEl.innerHTML = "";

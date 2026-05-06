@@ -211,6 +211,13 @@ main {
   break-inside: avoid;
   margin: 0 0 var(--gap);
 }
+.masonry figcaption {
+  font-size: 13px;
+  color: var(--fg-muted);
+  padding: 8px 2px 0;
+  font-style: italic;
+  line-height: 1.4;
+}
 .masonry img {
   width: 100%;
   cursor: zoom-in;
@@ -281,12 +288,6 @@ main {
   font-size: 12px;
   color: rgba(255,255,255,0.55);
   letter-spacing: 0.08em;
-}
-.lb-comment {
-  font-size: 15px;
-  color: rgba(255,255,255,0.88);
-  font-family: var(--serif);
-  font-style: italic;
 }
 
 /* ---------- Statiske sider (about/contact) ---------- */

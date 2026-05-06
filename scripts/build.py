@@ -86,7 +86,7 @@ class Photo:
     width: int = 0
     height: int = 0
     year: int | None = None
-    camera: str = ""
+    make: str = ""
     focal_length: str = ""
     aperture: str = ""
     shutter: str = ""
@@ -141,13 +141,13 @@ def read_exif(src: Path) -> dict:
                 except Exception:
                     return None
 
-            # Kameramodell (tag 272)
-            model = exif.get(272) or ""
-            if isinstance(model, bytes):
-                model = model.decode("utf-8", errors="ignore")
-            model = model.strip()
-            if model:
-                result["camera"] = model
+            # Kameramerke (tag 271 = Make)
+            make = exif.get(271) or ""
+            if isinstance(make, bytes):
+                make = make.decode("utf-8", errors="ignore")
+            make = make.strip()
+            if make:
+                result["make"] = make
 
             # Brennvidde (tag 37386)
             fl = rat(ifd.get(37386))
@@ -231,7 +231,7 @@ def collect_galleries() -> list[Gallery]:
         # Les EXIF for alle bilder (år + visnings-metadata)
         for p in photos:
             data = read_exif(p.src)
-            p.camera       = data.get("camera", "")
+            p.make         = data.get("make", "")
             p.focal_length = data.get("focal_length", "")
             p.aperture     = data.get("aperture", "")
             p.shutter      = data.get("shutter", "")
@@ -367,15 +367,16 @@ def render_gallery(g: Gallery) -> str:
         thumb = f"{BASE_URL}/photos/{g.slug}/_thumb_{p.src.stem}.jpg"
         full = f"{BASE_URL}/photos/{g.slug}/_full_{p.src.stem}.jpg"
         attrs = ""
-        if p.camera:        attrs += f' data-camera="{html.escape(p.camera)}"'
+        if p.make:          attrs += f' data-make="{html.escape(p.make)}"'
         if p.focal_length:  attrs += f' data-focal="{html.escape(p.focal_length)}"'
         if p.aperture:      attrs += f' data-aperture="{html.escape(p.aperture)}"'
         if p.shutter:       attrs += f' data-shutter="{html.escape(p.shutter)}"'
-        if p.comment:       attrs += f' data-comment="{html.escape(p.comment)}"'
+        caption = f'<figcaption>{html.escape(p.comment)}</figcaption>' if p.comment else ''
         items.append(
             f'<figure class="photo" data-index="{i}"{attrs}>'
             f'<img loading="lazy" src="{thumb}" data-full="{full}" '
             f'width="{p.width}" height="{p.height}" alt="{html.escape(p.src.stem)}">'
+            f'{caption}'
             f'</figure>'
         )
 
